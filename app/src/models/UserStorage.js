@@ -1,8 +1,22 @@
 "use strict";
 
 const fs = require("fs").promises;
+const path = "./src/databases/users.json";
 
 class UserStorage {
+
+    static #getUsers(data, isAll, fields) {
+        const users = JSON.parse(data);
+        if (isAll) return users;
+        const newUsers = fields.reduce((newUsers, field) => {
+            if(users.hasOwnProperty(field)) {
+                newUsers[field] = users[field];
+            }
+            return newUsers;
+        }, {});
+        return newUsers;
+    }
+
     static #getUserInfo(data, id) {
         const users = JSON.parse(data);
         const idx = users.id.indexOf(id);
@@ -15,32 +29,40 @@ class UserStorage {
         return userInfo;
     }
 
-    static getUsers(...fields) {
-        // const users = this.#users;
-        const newUsers = fields.reduce((newUsers, field) => {
-            if(users.hasOwnProperty(field)) {
-                newUsers[field] = users[field];
-            }
-            return newUsers;
-        }, {});
-        return newUsers;
+    static getUsers(isAll, ...fields) {
+        return fs
+        .readFile(path)
+        .then((data) => {
+            return this.#getUsers(data, isAll, fields);
+        })
+        .catch(console.error);
+
+        
     }
 
     static getUserInfo(id) {
         return fs
-            .readFile("./src/databases/users.json")
+            .readFile(path)
             .then((data) => {
                 return this.#getUserInfo(data, id);
             })
             .catch(console.error);
     }
 
-    static save(userInfo) {
-        // const users = this.#users;
+    static async save(userInfo) {
+        const users = await this.getUsers(true);
+        // const users = await this.getUsers("id", "psword", "name");
+
+        if (users.id.includes(userInfo.id)) {
+            throw "Already exists ID";
+        }
+
+        // add data
         users.id.push(userInfo.id);
         users.name.push(userInfo.name);
         users.psword.push(userInfo.psword);
-        return {success: true};
+        fs.writeFile(path, JSON.stringify(users));
+        return { success: true};
     }
 
 };
